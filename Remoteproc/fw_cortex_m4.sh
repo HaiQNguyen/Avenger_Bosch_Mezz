@@ -44,6 +44,7 @@ cp lib/firmware/$fmw_name $fmw_dir/
 # load and start firmware
 echo $fmw_name > $rproc_class_dir/firmware
 echo start > $rproc_class_dir/state
+
 fi
 
 fi

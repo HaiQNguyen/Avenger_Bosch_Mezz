@@ -156,6 +156,9 @@ int main(void)
   {
 	  Error_Handler();
   }
+
+  uint8_t I2C_TX[10] = {0};
+  uint8_t I2C_RX[10] = {0};
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -163,13 +166,18 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	OPENAMP_check_for_message();
+	  OPENAMP_check_for_message();
 
-	if (VirtUart0RxMsg)
-	{
-		VirtUart0RxMsg = RESET;
-		VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
-	}
+	  I2C_TX[0] = 0x90;
+	  HAL_I2C_Master_Transmit(&hi2c2, 0x52, I2C_TX, 1, 0xFF);
+	  HAL_I2C_Master_Receive(&hi2c2, 0x53, I2C_RX, 1, 0xFF);
+	  memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
+	  sprintf(VirtUart0ChannelBuffRx, "ID: 0x%x \r\n", I2C_RX[0]);
+	  VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+	  HAL_Delay(2000);
+
+
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

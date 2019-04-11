@@ -34,7 +34,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define MAX_BUFFER_SIZE RPMSG_BUFFER_SIZE
 
+/* Command list */
+#define LED_ON			"LED ON"
+#define LED_OFF			"LED OFF"
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,7 +54,11 @@ IPCC_HandleTypeDef hipcc;
 SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
+VIRT_UART_HandleTypeDef huart0;
 
+__IO FlagStatus VirtUart0RxMsg = RESET;
+uint8_t VirtUart0ChannelBuffRx[MAX_BUFFER_SIZE];
+uint16_t VirtUart0ChannelRxSize = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,7 +69,7 @@ static void MX_IPCC_Init(void);
 static void MX_SPI2_Init(void);
 int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb);
 /* USER CODE BEGIN PFP */
-
+void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -85,11 +93,18 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+  if(IS_ENGINEERING_BOOT_MODE())
+  {
+	  SystemClock_Config();
+  }
+
+  /*HW semaphore Clock enable*/
+  __HAL_RCC_HSEM_CLK_ENABLE();
 
   /* USER CODE END Init */
 
   /* Configure the system clock */
-  SystemClock_Config();
+  //SystemClock_Config();
 
   /* IPCC initialisation */
    MX_IPCC_Init();
@@ -106,6 +121,41 @@ int main(void)
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 
+  GPIO_InitTypeDef   GPIO_InitStruct;
+
+  /* Configure STATUS_LED Pin as output*/
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pin = LED_STATUS_Pin;
+  PERIPH_LOCK(LED_STATUS_GPIO_Port);
+  HAL_GPIO_Init(LED_STATUS_GPIO_Port, &GPIO_InitStruct);
+  PERIPH_UNLOCK(LED_STATUS_GPIO_Port);
+
+  /* Configure STATUS_LED Pin as output*/
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pin = LED_ERROR_Pin;
+  PERIPH_LOCK(LED_ERROR_GPIO_Port);
+  HAL_GPIO_Init(LED_ERROR_GPIO_Port, &GPIO_InitStruct);
+  PERIPH_UNLOCK(LED_ERROR_GPIO_Port);
+
+  /* Configure STATUS_LED Pin as output*/
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pin = LED_TEST_Pin;
+  PERIPH_LOCK(LED_TEST_GPIO_Port);
+  HAL_GPIO_Init(LED_TEST_GPIO_Port, &GPIO_InitStruct);
+  PERIPH_UNLOCK(LED_TEST_GPIO_Port);
+
+  if (VIRT_UART_Init(&huart0) != VIRT_UART_OK)
+  {
+	  Error_Handler();
+  }
+
+  if(VIRT_UART_RegisterCallback(&huart0, VIRT_UART_RXCPLT_CB_ID, VIRT_UART0_RxCpltCallback) != VIRT_UART_OK)
+  {
+	  Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -113,7 +163,13 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	OPENAMP_check_for_message();
 
+	if (VirtUart0RxMsg)
+	{
+		VirtUart0RxMsg = RESET;
+		VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+	}
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -335,7 +391,20 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
+{
+	HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
+    /* copy received msg in a variable to sent it back to master processor in main infinite loop*/
+    VirtUart0ChannelRxSize = huart->RxXferSize < MAX_BUFFER_SIZE? huart->RxXferSize : MAX_BUFFER_SIZE-1;
 
+    if( memcmp(huart->pRxBuffPtr, LED_ON, VirtUart0ChannelRxSize - 1) == 0)
+    	HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
+    else if( memcmp(huart->pRxBuffPtr, LED_OFF, VirtUart0ChannelRxSize - 1) == 0)
+		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
+
+    memcpy(VirtUart0ChannelBuffRx, huart->pRxBuffPtr, VirtUart0ChannelRxSize);
+    VirtUart0RxMsg = SET;
+}
 /* USER CODE END 4 */
 
 /**
@@ -346,8 +415,12 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-
-  /* USER CODE END Error_Handler_Debug */
+	while(1)
+	{
+		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
+		HAL_Delay(200);
+	}
+	/* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT

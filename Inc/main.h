@@ -63,13 +63,19 @@ void Error_Handler(void);
 #define BMA456_INT1_Pin GPIO_PIN_15
 #define BMA456_INT1_GPIO_Port GPIOD
 #define BMA456_INT1_EXTI_IRQn EXTI15_IRQn
+#define LED_TEST_Pin GPIO_PIN_7
+#define LED_TEST_GPIO_Port GPIOZ
 #define BMA456_CS_Pin GPIO_PIN_8
 #define BMA456_CS_GPIO_Port GPIOD
 #define BHI160_INT_Pin GPIO_PIN_14
 #define BHI160_INT_GPIO_Port GPIOA
 #define BHI160_INT_EXTI_IRQn EXTI14_IRQn
+#define LED_ERROR_Pin GPIO_PIN_1
+#define LED_ERROR_GPIO_Port GPIOG
 #define BME680_CS_Pin GPIO_PIN_3
 #define BME680_CS_GPIO_Port GPIOC
+#define LED_STATUS_Pin GPIO_PIN_0
+#define LED_STATUS_GPIO_Port GPIOG
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

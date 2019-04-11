@@ -1,0 +1,186 @@
+/* SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause) */
+/*
+ * Copyright (C) STMicroelectronics 2019 - All Rights Reserved
+ * Author: STM32CubeMX code generation for STMicroelectronics.
+ */
+
+/dts-v1/;
+#include "stm32mp157c.dtsi"
+#include "stm32mp157c-m4-srm.dtsi"
+#include "stm32mp157cac-pinctrl.dtsi"
+
+/* USER CODE BEGIN includes */
+/* USER CODE END includes */
+
+/ {
+	model = "STMicroelectronics custom STM32CubeMX board";
+	compatible = "st,stm32mp157a-avenger_bosch_mezz-mx", "st,stm32mp157";
+
+    /* !!! log : Warning - no DDR config found: 'memory' node not generated !!! */
+    /*
+    memory@??? {
+         reg = < ??? >;
+    };
+    */
+
+    reserved-memory {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
+
+        /* USER CODE BEGIN reserved-memory */
+        /* USER CODE END reserved-memory */
+
+        /* !!! log : Warning - no DDR config found: 'gpu_reserved' node not generated !!! */
+        /*
+        gpu_reserved: gpu@??? {
+            reg = <??? ???}>;
+            no-map;
+        };
+        */
+    };
+
+	/* USER CODE BEGIN root */
+	/* USER CODE END root */
+
+    clocks {
+        /* USER CODE BEGIN clocks */
+        /* USER CODE END clocks */
+
+        clk_lsi: clk-lsi {
+            clock-frequency = <32000>;
+        };
+        clk_hsi: clk-hsi {
+            clock-frequency = <64000000>;
+        };
+    };
+
+}; /*root*/
+
+&pinctrl {
+    u-boot,dm-pre-reloc;
+    i2c2_pins_mx: i2c2_mx-0 {
+        pins {
+            pinmux = <STM32_PINMUX('H', 5, AF4)>; /* I2C2_SDA */
+            bias-disable;
+            drive-open-drain;
+            slew-rate = <0>;
+        };
+    };
+    spi2_pins_mx: spi2_mx-0 {
+        pins {
+            pinmux = <STM32_PINMUX('B', 10, AF5)>, /* SPI2_SCK */
+                     <STM32_PINMUX('I', 2, AF5)>, /* SPI2_MISO */
+                     <STM32_PINMUX('I', 3, AF5)>; /* SPI2_MOSI */
+            bias-disable;
+            drive-push-pull;
+            slew-rate = <1>;
+        };
+    };
+    i2c2_sleep_pins_mx: i2c2_sleep_mx-0 {
+        pins {
+            pinmux = <STM32_PINMUX('H', 5, ANALOG)>; /* I2C2_SDA */
+        };
+    };
+    spi2_sleep_pins_mx: spi2_sleep_mx-0 {
+        pins {
+            pinmux = <STM32_PINMUX('B', 10, ANALOG)>, /* SPI2_SCK */
+                     <STM32_PINMUX('I', 2, ANALOG)>, /* SPI2_MISO */
+                     <STM32_PINMUX('I', 3, ANALOG)>; /* SPI2_MOSI */
+        };
+    };
+};
+&pinctrl_z {
+    u-boot,dm-pre-reloc;
+    i2c2_pins_z_mx: i2c2_mx-0 {
+        pins {
+            pinmux = <STM32_PINMUX('Z', 0, AF3)>; /* I2C2_SCL */
+            bias-disable;
+            drive-open-drain;
+            slew-rate = <0>;
+        };
+    };
+    i2c2_sleep_pins_z_mx: i2c2_sleep_mx-0 {
+        pins {
+            pinmux = <STM32_PINMUX('Z', 0, ANALOG)>; /* I2C2_SCL */
+        };
+    };
+};
+
+&m4_rproc{
+    /*Restriction: "memory-region" property is not managed - please to use User-Section if needed*/
+    mboxes = <&ipcc 0>, <&ipcc 1>, <&ipcc 2>;
+    mbox-names = "vq0", "vq1", "shutdown";
+    recovery;
+    status = "okay";
+
+    /* USER CODE BEGIN m4_rproc */
+    /* USER CODE END m4_rproc */
+
+    m4_system_resources{
+        status = "okay";
+
+        /* USER CODE BEGIN m4_system_resources */
+        /* USER CODE END m4_system_resources */
+    };
+};
+
+&bsec{
+    status = "okay";
+
+    /* USER CODE BEGIN bsec */
+    /* USER CODE END bsec */
+};
+
+&hsem{
+    status = "okay";
+
+    /* USER CODE BEGIN hsem */
+    /* USER CODE END hsem */
+};
+
+&ipcc{
+    status = "okay";
+
+    /* USER CODE BEGIN ipcc */
+    /* USER CODE END ipcc */
+};
+
+&m4_i2c2{
+    pinctrl-names = "rproc_default", "rproc_sleep";
+    pinctrl-0 = <&i2c2_pins_mx &i2c2_pins_z_mx>;
+    pinctrl-1 = <&i2c2_sleep_pins_mx &i2c2_sleep_pins_z_mx>;
+    status = "okay";
+
+    /* USER CODE BEGIN m4_i2c2 */
+    /* USER CODE END m4_i2c2 */
+};
+
+&m4_spi2{
+    pinctrl-names = "rproc_default", "rproc_sleep";
+    pinctrl-0 = <&spi2_pins_mx>;
+    pinctrl-1 = <&spi2_sleep_pins_mx>;
+    status = "okay";
+
+    /* USER CODE BEGIN m4_spi2 */
+    /* USER CODE END m4_spi2 */
+};
+
+&rcc{
+    u-boot,dm-pre-reloc;
+    status = "okay";
+
+    /* USER CODE BEGIN rcc */
+    /* USER CODE END rcc */
+};
+
+&rtc{
+    status = "okay";
+
+    /* USER CODE BEGIN rtc */
+    /* USER CODE END rtc */
+};
+
+/* USER CODE BEGIN addons */
+/* USER CODE END addons */
+

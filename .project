@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
 	<name>Avenger_Bosch_Mezz</name>
-	<comment />
+	<comment></comment>
 	<projects>
 	</projects>
 	<buildSpec>
@@ -23,8 +23,7 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 		<nature>fr.ac6.mcu.ide.core.MCUProjectNature</nature>
-	<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature></natures>
-	<linkedResources>
-		
-	</linkedResources>
+		<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature>
+		<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature>
+	</natures>
 </projectDescription>

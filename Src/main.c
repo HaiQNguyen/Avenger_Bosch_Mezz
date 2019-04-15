@@ -97,24 +97,14 @@ int main(void)
   {
 	  SystemClock_Config();
   }
-#if 0
-	RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-	PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_SPI23;
-	PeriphClkInit.Spi23ClockSelection = RCC_SPI23CLKSOURCE_PLL4;
-	PeriphClkInit.TIMG1PresSelection = RCC_TIMG1PRES_DEACTIVATED;
-	PeriphClkInit.TIMG2PresSelection = RCC_TIMG2PRES_DEACTIVATED;
-	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-	{
-		Error_Handler();
-	}
-#endif
+
   /*HW semaphore Clock enable*/
   __HAL_RCC_HSEM_CLK_ENABLE();
 
   /* USER CODE END Init */
 
   /* Configure the system clock */
-  SystemClock_Config();
+ // SystemClock_Config();
 
   /* IPCC initialisation */
    MX_IPCC_Init();
@@ -198,25 +188,6 @@ int main(void)
   {
 	OPENAMP_check_for_message();
 
-#if 0
-	if (VirtUart0RxMsg)
-	{
-		VirtUart0RxMsg = RESET;
-		//VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
-		I2C_TX[0] = 0x90;
-		HAL_I2C_Master_Transmit(&hi2c2, 0x52, I2C_TX, 1, 0xFF);
-		HAL_I2C_Master_Receive(&hi2c2, 0x53, I2C_RX, 1, 0xFF);
-		memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-		sprintf(VirtUart0ChannelBuffRx, "I2C ID: 0x%x \r\n", I2C_RX[0]);
-		VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
-
-
-		memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-		sprintf(VirtUart0ChannelBuffRx, "hi hi hi \r\n");
-		VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
-	}
-#endif
-
 
 #if 1
 	I2C_TX[0] = 0x90;
@@ -227,7 +198,7 @@ int main(void)
 	VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
 #endif
 
-#if 1
+#if 0
 	SPI_TX[0] = 0x80;
 
 	HAL_GPIO_WritePin(BMP388_CS_GPIO_Port, BMP388_CS_Pin, GPIO_PIN_RESET);
@@ -257,9 +228,6 @@ int main(void)
 	VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
 #endif
 
-#if 0
-	HAL_GPIO_TogglePin(BMP388_CS_GPIO_Port, BMP388_CS_Pin);
-#endif
 	HAL_Delay(2000);
     /* USER CODE END WHILE */
 

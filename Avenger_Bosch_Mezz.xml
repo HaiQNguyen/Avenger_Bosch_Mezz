@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE targetDefinitions [
+<!ELEMENT targetDefinitions (board)>
+<!ELEMENT board (name,dbgIF+,dbgDEV,mcuId)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT dbgIF (#PCDATA)>
+<!ELEMENT dbgDEV (#PCDATA)>
+<!ELEMENT mcuId (#PCDATA)>
+<!ATTLIST board id CDATA #REQUIRED>
+]>
+<targetDefinitions>
+  <board id="Avenger_Bosch_Mezz">
+    <name>Avenger_Bosch_Mezz</name>
+    <dbgIF>SWD</dbgIF>
+    <dbgDEV>ST-Link</dbgDEV>
+    <mcuId>stm32mp157aacx</mcuId>
+  </board>
+</targetDefinitions>

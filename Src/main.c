@@ -301,9 +301,13 @@ int main(void)
 	if(VirtUart0RxMsg == SET)
 	{
 		VirtUart0RxMsg = RESET;
-		memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-		sprintf(VirtUart0ChannelBuffRx, "acc %.2f %.2f %.2f \r\n", x_data, y_data, z_data);
-		VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+		HAL_Delay(200);
+		char msg_to_transmit[MAX_BUFFER_SIZE];
+		uint16_t msg_size = 0;
+
+		msg_size = snprintf(msg_to_transmit, MAX_BUFFER_SIZE, "acc %.2f %.2f %.2f \r\n", x_data, y_data, z_data);
+		msg_size += snprintf(msg_to_transmit + msg_size, MAX_BUFFER_SIZE, "%s\n", VirtUart0ChannelBuffRx);
+		VIRT_UART_Transmit(&huart0, (uint8_t*)msg_to_transmit, msg_size);
 		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
 	}
 
@@ -608,7 +612,8 @@ void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
 {
 	HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
     /* copy received msg in a variable to sent it back to master processor in main infinite loop*/
-    VirtUart0ChannelRxSize = huart->RxXferSize < MAX_BUFFER_SIZE? huart->RxXferSize : MAX_BUFFER_SIZE-1;
+    //VirtUart0ChannelRxSize = huart->RxXferSize < MAX_BUFFER_SIZE? huart->RxXferSize : MAX_BUFFER_SIZE-1;
+
 
     if( memcmp(huart->pRxBuffPtr, LED_ON, VirtUart0ChannelRxSize - 1) == 0)
     	HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
@@ -616,13 +621,14 @@ void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
     else if( memcmp(huart->pRxBuffPtr, LED_OFF, VirtUart0ChannelRxSize - 1) == 0)
 		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
 
-    else if( memcmp(huart->pRxBuffPtr, "bmi160 read", VirtUart0ChannelRxSize - 1) == 0)
+    else if(!strncmp((char *)huart->pRxBuffPtr, "bmi160 read", strlen("bmi160 read")))
+    //else if( memcmp(huart->pRxBuffPtr, "bmi160 read", VirtUart0ChannelRxSize - 1) == 0)
     {
     	VirtUart0RxMsg = SET;
     }
 
-    memcpy(VirtUart0ChannelBuffRx, huart->pRxBuffPtr, VirtUart0ChannelRxSize);
-    VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+    //memcpy(VirtUart0ChannelBuffRx, huart->pRxBuffPtr, VirtUart0ChannelRxSize);
+    //VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
 }
 
 

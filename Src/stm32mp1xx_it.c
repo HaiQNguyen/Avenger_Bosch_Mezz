@@ -226,20 +226,6 @@ void IPCC_TX1_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles EXTI line14 interrupt.
-  */
-void EXTI14_IRQHandler(void)
-{
-  /* USER CODE BEGIN EXTI14_IRQn 0 */
-
-  /* USER CODE END EXTI14_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);
-  /* USER CODE BEGIN EXTI14_IRQn 1 */
-
-  /* USER CODE END EXTI14_IRQn 1 */
-}
-
-/**
   * @brief This function handles EXTI line15 interrupt.
   */
 void EXTI15_IRQHandler(void)

@@ -64,6 +64,8 @@ void Error_Handler(void);
 #define LED_STATUS_GPIO_Port GPIOZ
 #define BMA456_CS_Pin GPIO_PIN_8
 #define BMA456_CS_GPIO_Port GPIOD
+#define BHI160_IN_Pin GPIO_PIN_14
+#define BHI160_IN_GPIO_Port GPIOA
 #define LED_TEST_Pin GPIO_PIN_1
 #define LED_TEST_GPIO_Port GPIOG
 #define BME680_CS_Pin GPIO_PIN_3

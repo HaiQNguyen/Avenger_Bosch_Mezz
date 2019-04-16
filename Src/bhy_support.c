@@ -119,7 +119,7 @@ void bhy_delay_msec(uint32_t msec)
  */
 void bhy_printf(const u8 * string)
 {
-    trace_log("%s",string);
+    //trace_log("%s",string);
 }
 /*!
  * @brief provides the mcu reference code version

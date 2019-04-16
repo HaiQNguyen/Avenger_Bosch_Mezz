@@ -27,6 +27,7 @@
 #include "bhy_support.h"
 #include "bhy_uc_driver.h"
 #include "Bosch_PCB_7183_di01_BMI160-7183_di01.2.1.10836_170103.h"
+#include "bmm150.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -114,6 +115,10 @@ void DirtyDebug(char *msg)
 
 static void timestamp_callback(bhy_data_scalar_u16_t *new_timestamp); //TODO Porting
 static void sensors_callback_acc(bhy_data_generic_t * sensor_data, bhy_virtual_sensor_t sensor_id); //TODO Porting
+
+int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
+int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -141,6 +146,10 @@ int main(void)
 	BHY_RETURN_FUNCTION_TYPE   result;
 	int8_t                    bhy_mapping_matrix_init[3*3]   = {0};
 	int8_t                    bhy_mapping_matrix_config[3*3] = {0,1,0,-1,0,0,0,0,1};
+
+
+	struct bmm150_dev dev;
+	int8_t rslt = BMM150_OK;
 
 
   /* USER CODE END 1 */
@@ -243,8 +252,28 @@ int main(void)
 
   HAL_GPIO_WritePin(BMP388_CS_GPIO_Port, BMP388_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(BME680_CS_GPIO_Port, BME680_CS_Pin, GPIO_PIN_SET);
-  HAL_Delay(10);
 
+
+  /* Sensor interface over I2C */
+  	dev.dev_id = BMM150_DEFAULT_I2C_ADDRESS;
+  	dev.intf = BMM150_I2C_INTF;
+  	dev.read = sensor_i2c_read;
+  	dev.write = sensor_i2c_write;
+  	dev.delay_ms = HAL_Delay;
+
+  	rslt = bmm150_init(&dev);
+
+
+  	/* Setting the power mode as normal */
+	dev.settings.pwr_mode = BMM150_NORMAL_MODE;
+	rslt = bmm150_set_op_mode(&dev);
+
+	/* Setting the preset mode as Low power mode
+	i.e. data rate = 10Hz XY-rep = 1 Z-rep = 2*/
+	dev.settings.preset_mode = BMM150_PRESETMODE_LOWPOWER;
+	rslt = bmm150_set_presetmode(&dev);
+
+  /*****************************************************/
   if(bhy_driver_init(&bhy1_fw))
 	{
 		//DirtyDebug("Error Driver Init \r\n");
@@ -296,6 +325,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  rslt = bmm150_read_mag_data(&dev);
+
+	  	/* Print the Mag data */
+
 	OPENAMP_check_for_message();
 
 	if(VirtUart0RxMsg == SET)
@@ -305,7 +338,8 @@ int main(void)
 		char msg_to_transmit[MAX_BUFFER_SIZE];
 		uint16_t msg_size = 0;
 
-		msg_size = snprintf(msg_to_transmit, MAX_BUFFER_SIZE, "acc %.2f %.2f %.2f \r\n", x_data, y_data, z_data);
+		msg_size = snprintf(msg_to_transmit, MAX_BUFFER_SIZE, "acc %.2f %.2f %.2f ", x_data, y_data, z_data);
+		msg_size += snprintf(msg_to_transmit + msg_size, MAX_BUFFER_SIZE, "MAG X : %0.2f \t MAG Y : %0.2f \t MAG Z : %0.2f \n" ,dev.data.x, dev.data.y, dev.data.z);
 		msg_size += snprintf(msg_to_transmit + msg_size, MAX_BUFFER_SIZE, "%s\n", VirtUart0ChannelBuffRx);
 		VIRT_UART_Transmit(&huart0, (uint8_t*)msg_to_transmit, msg_size);
 		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
@@ -678,6 +712,23 @@ static void sensors_callback_acc(bhy_data_generic_t * sensor_data, bhy_virtual_s
     }
 }
 
+int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
+{
+	//TODO porting I2c code
+	uint8_t tx_buff[100];
+	tx_buff[0] = reg;
+	memcpy(tx_buff + 1, p_buf, size * sizeof(uint8_t));
+	HAL_I2C_Master_Transmit(&hi2c2, addr << 1, tx_buff, size + 1, 0xFF);
+	return BHY_SUCCESS;
+}
+
+int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
+{
+	//TODO porting I2C code
+	HAL_I2C_Master_Transmit(&hi2c2, addr << 1, &reg, 1, 0xFF);
+	HAL_I2C_Master_Receive(&hi2c2, ((addr << 1) | 1), p_buf, size, 0xFF);
+	return BHY_SUCCESS;
+}
 /* USER CODE END 4 */
 
 /**

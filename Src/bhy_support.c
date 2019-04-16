@@ -129,23 +129,7 @@ uint8_t * bhy_get_version(void)
     return (version);
 }
 
-int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
-{
-	//TODO porting I2c code
-	uint8_t tx_buff[100];
-	tx_buff[0] = reg;
-	memcpy(tx_buff + 1, p_buf, size * sizeof(uint8_t));
-	HAL_I2C_Master_Transmit(&hi2c2, addr << 1, tx_buff, size + 1, 0xFF);
-	return BHY_SUCCESS;
-}
 
-int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
-{
-	//TODO porting I2C code
-	HAL_I2C_Master_Transmit(&hi2c2, addr << 1, &reg, 1, 0xFF);
-	HAL_I2C_Master_Receive(&hi2c2, ((addr << 1) | 1), p_buf, size, 0xFF);
-	return BHY_SUCCESS;
-}
 
 
 /** @}*/

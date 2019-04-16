@@ -83,6 +83,16 @@ typedef enum BMI160_STATE
 }BMI160_State;
 
 volatile BMI160_State bmi_state = BMI160_IDLE;
+
+float   time_stamp    = 0;
+uint8_t sensor_type   = 0;
+int16_t x_raw         = 0;
+int16_t y_raw         = 0;
+int16_t z_raw         = 0;
+float   x_data        = 0;
+float   y_data        = 0;
+float   z_data        = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -235,6 +245,50 @@ int main(void)
   HAL_GPIO_WritePin(BME680_CS_GPIO_Port, BME680_CS_Pin, GPIO_PIN_SET);
   HAL_Delay(10);
 
+  if(bhy_driver_init(&bhy1_fw))
+	{
+		//DirtyDebug("Error Driver Init \r\n");
+		//bmi_state = BMI160_ERROR;
+	  Error_Handler();
+	}
+
+	/* wait for the bhy trigger the interrupt pin go down and up again */
+	while (HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin));
+
+	while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin));
+
+	/* To get the customized version number in firmware, it is necessary to read Parameter Page 2, index 125 */
+	/* to get this information. This feature is only supported for customized firmware. To get this customized */
+	/* firmware, you need to contact your local FAE of Bosch Sensortec. */
+	//bhy_read_parameter_page(BHY_PAGE_2, PAGE2_CUS_FIRMWARE_VERSION, (uint8_t*)&bhy_cus_version, sizeof(struct cus_version_t));
+	//DEBUG("cus version base:%d major:%d minor:%d\n", bhy_cus_version.base, bhy_cus_version.major, bhy_cus_version.minor);
+
+	/* config mapping matrix, for customer platform, this remapping matrix need to be changed */
+	/* according to 'Application Note Axes remapping of BHA250(B) /BHI160(B)' document.       */
+	bhy_mapping_matrix_get(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_init);
+	bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_config);
+	bhy_mapping_matrix_get(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_init);
+
+	/* install time stamp callback */
+	bhy_install_timestamp_callback(VS_WAKEUP, timestamp_callback);
+	bhy_install_timestamp_callback(VS_NON_WAKEUP, timestamp_callback);
+
+
+	/* install the callback function for parse fifo data */
+	if(bhy_install_sensor_callback(VS_TYPE_ACCELEROMETER, VS_WAKEUP, sensors_callback_acc))
+	{
+		//DirtyDebug("Fail to install sensor callback\r\n");
+		//bmi_state = BMI160_ERROR;
+		Error_Handler();
+	}
+
+	/* enables the virtual sensor */
+	if(bhy_enable_virtual_sensor(VS_TYPE_ACCELEROMETER, VS_WAKEUP, 10, 0, VS_FLUSH_NONE, 0, 0))
+	{
+		//DirtyDebug("Fail to enable sensor\r\n");
+		//bmi_state = BMI160_ERROR;
+		Error_Handler();
+	}
 
   /* USER CODE END 2 */
 
@@ -244,123 +298,55 @@ int main(void)
   {
 	OPENAMP_check_for_message();
 
-
-#if 1
-	switch(bmi_state)
+	if(VirtUart0RxMsg == SET)
 	{
-		case BMI160_IDLE:
-			break;
-
-		case BMI160_INIT:
-			/* init the bhy chip */
-			DirtyDebug("Init state \r\n");
-			//TODO Porting
-			if(bhy_driver_init(&bhy1_fw))
-			{
-				DirtyDebug("Error Driver Init \r\n");
-				bmi_state = BMI160_ERROR;
-				break;
-			}
-
-			/* wait for the bhy trigger the interrupt pin go down and up again */
-			while (HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin));
-
-			while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin));
-
-			/* To get the customized version number in firmware, it is necessary to read Parameter Page 2, index 125 */
-			/* to get this information. This feature is only supported for customized firmware. To get this customized */
-			/* firmware, you need to contact your local FAE of Bosch Sensortec. */
-			//bhy_read_parameter_page(BHY_PAGE_2, PAGE2_CUS_FIRMWARE_VERSION, (uint8_t*)&bhy_cus_version, sizeof(struct cus_version_t));
-			//DEBUG("cus version base:%d major:%d minor:%d\n", bhy_cus_version.base, bhy_cus_version.major, bhy_cus_version.minor);
-
-			/* config mapping matrix, for customer platform, this remapping matrix need to be changed */
-			/* according to 'Application Note Axes remapping of BHA250(B) /BHI160(B)' document.       */
-			bhy_mapping_matrix_get(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_init);
-			bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_config);
-			bhy_mapping_matrix_get(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_init);
-
-			/* install time stamp callback */
-			bhy_install_timestamp_callback(VS_WAKEUP, timestamp_callback);
-			bhy_install_timestamp_callback(VS_NON_WAKEUP, timestamp_callback);
-
-
-			/* install the callback function for parse fifo data */
-			if(bhy_install_sensor_callback(VS_TYPE_ACCELEROMETER, VS_WAKEUP, sensors_callback_acc))
-			{
-				DirtyDebug("Fail to install sensor callback\r\n");
-				bmi_state = BMI160_ERROR;
-				break;
-			}
-
-			/* enables the virtual sensor */
-			if(bhy_enable_virtual_sensor(VS_TYPE_ACCELEROMETER, VS_WAKEUP, 10, 0, VS_FLUSH_NONE, 0, 0))
-			{
-				DirtyDebug("Fail to enable sensor\r\n");
-				bmi_state = BMI160_ERROR;
-				break;
-			}
-
-			DirtyDebug("Success \r\n");
-			bmi_state = BMI160_IDLE;
-			break;
-
-		case BMI160_READ:
-			/* wait until the interrupt fires */
-			/* unless we already know there are bytes remaining in the fifo */
-			while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin) && !bytes_remaining)
-			{
-			}
-
-			bhy_read_fifo(fifo + bytes_left_in_fifo, FIFO_SIZE - bytes_left_in_fifo, &bytes_read, &bytes_remaining);
-			bytes_read           += bytes_left_in_fifo;
-			fifoptr              = fifo;
-			packet_type          = BHY_DATA_TYPE_PADDING;
-
-			do
-			{
-				/* this function will call callbacks that are registered */
-				result = bhy_parse_next_fifo_packet(&fifoptr, &bytes_read, &fifo_packet, &packet_type);
-
-				/* prints all the debug packets */
-				if (packet_type == BHY_DATA_TYPE_DEBUG)
-				{
-					bhy_print_debug_packet(&fifo_packet.data_debug, bhy_printf);
-				}
-
-				/* the logic here is that if doing a partial parsing of the fifo, then we should not parse  */
-				/* the last 18 bytes (max length of a packet) so that we don't try to parse an incomplete   */
-				/* packet */
-			} while ((result == BHY_SUCCESS) && (bytes_read > (bytes_remaining ? MAX_PACKET_LENGTH : 0)));
-
-			bytes_left_in_fifo = 0;
-
-			if (bytes_remaining)
-			{
-				/* shifts the remaining bytes to the beginning of the buffer */
-				while (bytes_left_in_fifo < bytes_read)
-				{
-					fifo[bytes_left_in_fifo++] = *(fifoptr++);
-				}
-			}
-			DirtyDebug("read\r\n");
-			bmi_state = BMI160_IDLE;
-			break;
-		case BMI160_ERROR:
-			DirtyDebug("error\r\n");
-			bmi_state = BMI160_IDLE;
-			break;
-			break;
-		default:
-			break;
+		VirtUart0RxMsg = RESET;
+		memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
+		sprintf(VirtUart0ChannelBuffRx, "acc %.2f %.2f %.2f \r\n", x_data, y_data, z_data);
+		VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
 	}
 
 
+#if 1
+	while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin) && !bytes_remaining)
+	{
+	}
+
+	bhy_read_fifo(fifo + bytes_left_in_fifo, FIFO_SIZE - bytes_left_in_fifo, &bytes_read, &bytes_remaining);
+	bytes_read           += bytes_left_in_fifo;
+	fifoptr              = fifo;
+	packet_type          = BHY_DATA_TYPE_PADDING;
+
+	do
+	{
+		/* this function will call callbacks that are registered */
+		result = bhy_parse_next_fifo_packet(&fifoptr, &bytes_read, &fifo_packet, &packet_type);
+
+		/* prints all the debug packets */
+		if (packet_type == BHY_DATA_TYPE_DEBUG)
+		{
+			bhy_print_debug_packet(&fifo_packet.data_debug, bhy_printf);
+		}
+
+		/* the logic here is that if doing a partial parsing of the fifo, then we should not parse  */
+		/* the last 18 bytes (max length of a packet) so that we don't try to parse an incomplete   */
+		/* packet */
+	}
+	while ((result == BHY_SUCCESS) && (bytes_read > (bytes_remaining ? MAX_PACKET_LENGTH : 0)));
+
+	bytes_left_in_fifo = 0;
+
+	if (bytes_remaining)
+	{
+		/* shifts the remaining bytes to the beginning of the buffer */
+		while (bytes_left_in_fifo < bytes_read)
+		{
+			fifo[bytes_left_in_fifo++] = *(fifoptr++);
+		}
+	}
+	HAL_GPIO_TogglePin(LED_TEST_GPIO_Port, LED_TEST_Pin);
 #endif
-
-
-
-
-
 
 #if 0
 	SPI_TX[0] = 0x80;
@@ -626,15 +612,17 @@ void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
 
     if( memcmp(huart->pRxBuffPtr, LED_ON, VirtUart0ChannelRxSize - 1) == 0)
     	HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
+
     else if( memcmp(huart->pRxBuffPtr, LED_OFF, VirtUart0ChannelRxSize - 1) == 0)
 		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
-    else if( memcmp(huart->pRxBuffPtr, "bmi160 init", VirtUart0ChannelRxSize - 1) == 0)
-    		bmi_state = BMI160_INIT;
+
     else if( memcmp(huart->pRxBuffPtr, "bmi160 read", VirtUart0ChannelRxSize - 1) == 0)
-    	bmi_state = BMI160_READ;
+    {
+    	VirtUart0RxMsg = SET;
+    }
 
     memcpy(VirtUart0ChannelBuffRx, huart->pRxBuffPtr, VirtUart0ChannelRxSize);
-    VirtUart0RxMsg = SET;
+    VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
 }
 
 
@@ -654,16 +642,7 @@ static void timestamp_callback(bhy_data_scalar_u16_t *new_timestamp)
 
 static void sensors_callback_acc(bhy_data_generic_t * sensor_data, bhy_virtual_sensor_t sensor_id)
 {
-    float   time_stamp    = 0;
-    uint8_t sensor_type   = 0;
-    int16_t x_raw         = 0;
-    int16_t y_raw         = 0;
-    int16_t z_raw         = 0;
-    float   x_data        = 0;
-    float   y_data        = 0;
-    float   z_data        = 0;
-
-
+	HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
     /* Since a timestamp is always sent before every new data, and that the callbacks   */
     /* are called while the parsing is done, then the system timestamp is always equal  */
     /* to the sample timestamp. (in callback mode only)                                 */
@@ -683,10 +662,6 @@ static void sensors_callback_acc(bhy_data_generic_t * sensor_data, bhy_virtual_s
             y_data = (float)y_raw / 32768.0f * 4.0f;
             z_data = (float)z_raw / 32768.0f * 4.0f;
             //DEBUG("Time:%6.3fs acc %f %f %f\n", time_stamp, x_data, y_data, z_data);
-            memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-			sprintf(VirtUart0ChannelBuffRx, "Time:%6.3fs acc %f %f % \r\n", time_stamp, x_data, y_data, z_data);
-            //sprintf(VirtUart0ChannelBuffRx, "acc %d %d %d\n", x_data, y_data, z_data);
-			VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
             //TODO replace
             break;
 

@@ -21,7 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "openamp.h"
-
+#include "bhy_support.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -70,6 +70,13 @@ static void MX_SPI2_Init(void);
 int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb);
 /* USER CODE BEGIN PFP */
 void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart);
+
+void DirtyDebug(char *msg)
+{
+	memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
+	sprintf(VirtUart0ChannelBuffRx, msg);
+	VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -171,11 +178,11 @@ int main(void)
 	  Error_Handler();
   }
 
-  uint8_t I2C_TX[10] = {0};
-  uint8_t I2C_RX[10] = {0};
+  //uint8_t I2C_TX[10] = {0};
+  //uint8_t I2C_RX[10] = {0};
 
-  uint8_t SPI_TX[10] = {0};
-  uint8_t SPI_RX[10] = {0};
+  //uint8_t SPI_TX[10] = {0};
+  //uint8_t SPI_RX[10] = {0};
 
   HAL_GPIO_WritePin(BMP388_CS_GPIO_Port, BMP388_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(BME680_CS_GPIO_Port, BME680_CS_Pin, GPIO_PIN_SET);
@@ -190,12 +197,21 @@ int main(void)
 
 
 #if 1
-	I2C_TX[0] = 0x90;
-	HAL_I2C_Master_Transmit(&hi2c2, 0x52, I2C_TX, 1, 0xFF);
-	HAL_I2C_Master_Receive(&hi2c2, 0x53, I2C_RX, 1, 0xFF);
+	uint8_t buff[10] = {0};
+
+	sensor_i2c_read(0x29, 0x90, buff, 1);
+
 	memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-	sprintf(VirtUart0ChannelBuffRx, "I2C ID: 0x%x \r\n", I2C_RX[0]);
+	sprintf(VirtUart0ChannelBuffRx, "I2C ID: 0x%x \r\n", buff[0]);
 	VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+
+	if(bhy_initialize_support() != BHY_SUCCESS)
+	{
+		memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
+		sprintf(VirtUart0ChannelBuffRx, "error \r\n");
+		VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
+	}
+
 #endif
 
 #if 0
@@ -466,6 +482,9 @@ void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
     memcpy(VirtUart0ChannelBuffRx, huart->pRxBuffPtr, VirtUart0ChannelRxSize);
     VirtUart0RxMsg = SET;
 }
+
+
+
 /* USER CODE END 4 */
 
 /**

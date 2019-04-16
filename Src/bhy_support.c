@@ -40,7 +40,7 @@
   * patent rights of the copyright holder.
   *
   *
-  * @file              bhy_support.h
+  * @file              bhy_support.c
   *
   * @date              12/19/2016
   *
@@ -49,32 +49,27 @@
   *
   */
 
-#ifndef BHY_SUPPORT_H_
-#define BHY_SUPPORT_H_
 
 /********************************************************************************/
 /*                                  HEADER FILES                                */
 /********************************************************************************/
-#include "bhy.h"
-#include "twi.h"
+#include "bhy_support.h"
+#include "bhy_uc_driver_config.h"
+
 
 /********************************************************************************/
-/*                                     MACROS                                   */
+/*                                STATIC VARIABLES                              */
 /********************************************************************************/
-#define RETRY_NUM                   3
+static struct bhy_t bhy;
+static uint8_t *version = BHY_MCU_REFERENCE_VERSION;
 
-/*! determines the I2C slave address of BHy
-* The default I2C address of the BHy device is 0101000b (0x28). */
-/* 0x28 CONFLICTS ON ATMEL DEV KITS WITH THE ONBOARD EDBG!!!!   */
-#define BHY_I2C_SLAVE_ADDRESS       BHY_I2C_ADDR1
-/*! the delay required to wait for BHY chip to reset */
-#define BHY_RESET_DELAY_MS          UINT32_C(50)
-
-/*! these two macros are defined for i2c read/write limitation of host */
-/*! users must modify these two macros according to their own IIC hardware design */
-#define I2C_ONCE_WRITE_MAX_COUNT   (8)
-#define I2C_ONCE_READ_MAX_COUNT    (8)
-
+/********************************************************************************/
+/*                         EXTERN FUNCTION DECLARATIONS                         */
+/********************************************************************************/
+extern int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
+extern int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
+extern void trace_log(const char *fmt, ...);
+extern I2C_HandleTypeDef hi2c2;//TODO init I2C handler
 /********************************************************************************/
 /*                             FUNCTION DECLARATIONS                            */
 /********************************************************************************/
@@ -82,25 +77,71 @@
 * @brief        Initializes BHY smart sensor and its required connections
 *
 */
-int8_t bhy_initialize_support(void);
+int8_t bhy_initialize_support(void)
+{
+    uint8_t tmp_retry = RETRY_NUM;
 
+    bhy.bus_write = &sensor_i2c_write;
+    bhy.bus_read = &sensor_i2c_read;
+    bhy.delay_msec  = &bhy_delay_msec;
+    bhy.device_addr = 0x29; //TODO Modify address of the sensor
+
+    bhy_init(&bhy);
+
+    bhy_set_reset_request(BHY_RESET_ENABLE);
+
+    while(tmp_retry--)
+    {
+        bhy_get_product_id(&bhy.product_id);
+
+        if(PRODUCT_ID_7183 == bhy.product_id)
+        {
+            return BHY_SUCCESS;
+        }
+
+        bhy_delay_msec(BHY_PARAMETER_ACK_DELAY);
+    }
+
+    return BHY_PRODUCT_ID_ERROR;
+}
 /*!
 * @brief        Initiates a delay of the length of the argument in milliseconds
 *
 * @param[in]    msec    Delay length in terms of milliseconds
 *
 */
-void bhy_delay_msec(uint32_t msec);
-
+void bhy_delay_msec(uint32_t msec)
+{
+    HAL_Delay(msec);
+}
 /*!
  * @brief provides a print function to the bhy driver on DD2.0 platform
  */
-void bhy_printf (const u8 * string);
-
+void bhy_printf(const u8 * string)
+{
+    trace_log("%s",string);
+}
 /*!
  * @brief provides the mcu reference code version
  */
-uint8_t *bhy_get_version(void);
+uint8_t * bhy_get_version(void)
+{
+    return (version);
+}
+
+int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
+{
+	//TODO porting I2c code
+	return BHY_SUCCESS;
+}
+
+int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
+{
+	//TODO porting I2C code
+	HAL_I2C_Master_Transmit(&hi2c2, addr << 1, &reg, 1, 0xFF);
+	HAL_I2C_Master_Receive(&hi2c2, ((addr << 1) | 1), p_buf, size, 0xFF);
+	return BHY_SUCCESS;
+}
 
 
-#endif /* BHY_SUPPORT_H_ */
+/** @}*/

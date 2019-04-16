@@ -53,6 +53,7 @@
 /*! file <BHY >
     brief <Sensor driver for BHY> */
 #include "bhy.h"
+#include "stdio.h"
 /* static structure for bhy */
 static struct bhy_t *p_bhy;
 /* contain the saved parameters data*/
@@ -61,6 +62,8 @@ static struct parameter_read_buffer_t read_buffer;
 static struct parameter_write_buffer_t write_buffer;
 /* Assign the sensor status bank*/
 struct sensor_status_bank_t sensor_status_bank;
+
+extern void DirtyDebug(char *msg);
 
 /*!
  *  @brief
@@ -92,6 +95,15 @@ BHY_RETURN_FUNCTION_TYPE bhy_init(struct bhy_t *bhy)
     u8 v_data_u8 = BHY_INIT_VALUE;
     /* assign bhy ptr */
     p_bhy = bhy;
+
+    char msg[20];
+
+   sprintf(msg, "ADR: 0x%x \r\n", p_bhy->device_addr);
+   DirtyDebug(msg);
+
+   sprintf(msg, "ID: 0x%x \r\n", p_bhy->product_id);
+   DirtyDebug(msg);
+
     com_rslt =
     p_bhy->BHY_BUS_READ_FUNC(p_bhy->device_addr,
     BHY_I2C_REG_PRODUCT_ID_ADDR,

@@ -67,26 +67,9 @@
             slew-rate = <0>;
         };
     };
-    spi2_pins_mx: spi2_mx-0 {
-        pins {
-            pinmux = <STM32_PINMUX('B', 10, AF5)>, /* SPI2_SCK */
-                     <STM32_PINMUX('I', 2, AF5)>, /* SPI2_MISO */
-                     <STM32_PINMUX('I', 3, AF5)>; /* SPI2_MOSI */
-            bias-disable;
-            drive-push-pull;
-            slew-rate = <1>;
-        };
-    };
     i2c2_sleep_pins_mx: i2c2_sleep_mx-0 {
         pins {
             pinmux = <STM32_PINMUX('H', 5, ANALOG)>; /* I2C2_SDA */
-        };
-    };
-    spi2_sleep_pins_mx: spi2_sleep_mx-0 {
-        pins {
-            pinmux = <STM32_PINMUX('B', 10, ANALOG)>, /* SPI2_SCK */
-                     <STM32_PINMUX('I', 2, ANALOG)>, /* SPI2_MISO */
-                     <STM32_PINMUX('I', 3, ANALOG)>; /* SPI2_MOSI */
         };
     };
 };
@@ -154,16 +137,6 @@
 
     /* USER CODE BEGIN m4_i2c2 */
     /* USER CODE END m4_i2c2 */
-};
-
-&m4_spi2{
-    pinctrl-names = "rproc_default", "rproc_sleep";
-    pinctrl-0 = <&spi2_pins_mx>;
-    pinctrl-1 = <&spi2_sleep_pins_mx>;
-    status = "okay";
-
-    /* USER CODE BEGIN m4_spi2 */
-    /* USER CODE END m4_spi2 */
 };
 
 &rcc{

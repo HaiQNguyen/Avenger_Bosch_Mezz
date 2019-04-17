@@ -66,7 +66,7 @@ clocks {
         CLK_STGEN_HSI
         CLK_USBPHY_DISABLED
         CLK_SPI2S1_DISABLED
-        CLK_SPI2S23_PLL4P
+        CLK_SPI2S23_DISABLED
         CLK_SPI45_DISABLED
         CLK_SPI6_DISABLED
         CLK_I2C46_DISABLED
@@ -89,9 +89,6 @@ clocks {
         CLK_LPTIM23_DISABLED
         CLK_LPTIM45_DISABLED
     >;
-    pll4:st,pll@3 {
-        cfg = < 3 24 1 1 1 1>;
-    };
 };
 
 &bsec{

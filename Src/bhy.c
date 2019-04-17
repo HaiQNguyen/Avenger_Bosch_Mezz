@@ -52,7 +52,7 @@
 **************************************************************************/
 /*! file <BHY >
     brief <Sensor driver for BHY> */
-#include "bhy.h"
+#include <bhy.h>
 #include "stdio.h"
 /* static structure for bhy */
 static struct bhy_t *p_bhy;
@@ -93,8 +93,6 @@ BHY_RETURN_FUNCTION_TYPE bhy_init(struct bhy_t *bhy)
     u8 v_data_u8 = BHY_INIT_VALUE;
     /* assign bhy ptr */
     p_bhy = bhy;
-
-    char msg[20];
 
     com_rslt =
     p_bhy->BHY_BUS_READ_FUNC(p_bhy->device_addr,

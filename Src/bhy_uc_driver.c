@@ -52,7 +52,7 @@
 /********************************************************************************/
 /*                                  HEADER FILES                                */
 /********************************************************************************/
-#include "bhy_uc_driver.h"
+#include <bhy_uc_driver.h>
 
 /********************************************************************************/
 /*                                       MACROS                                 */
@@ -134,7 +134,7 @@ static void (*timestamp_callback_list[TIMESTAMP_CALLBACK_LIST_NUM])(bhy_data_sca
 static void (*meta_event_callback_list[METAEVENT_CALLBACK_LIST_NUM])(bhy_data_meta_event_t *, bhy_meta_event_type_t) = {0};
 #endif
 
-extern void trace_log(const char *fmt, ...);
+//extern void trace_log(const char *fmt, ...);
 
 /********************************************************************************/
 /*                                    FUNCTIONS                                 */

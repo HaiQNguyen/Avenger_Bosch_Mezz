@@ -53,8 +53,8 @@
 /********************************************************************************/
 /*                                  HEADER FILES                                */
 /********************************************************************************/
-#include "bhy_support.h"
-#include "bhy_uc_driver_config.h"
+#include <bhy_support.h>
+#include <bhy_uc_driver_config.h>
 #include <string.h>
 
 /********************************************************************************/
@@ -68,7 +68,8 @@ static uint8_t *version = BHY_MCU_REFERENCE_VERSION;
 /********************************************************************************/
 extern int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
 extern int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
-extern void trace_log(const char *fmt, ...);
+extern void Delay_ms(uint32_t ms);
+//extern void trace_log(const char *fmt, ...);
 
 /********************************************************************************/
 /*                             FUNCTION DECLARATIONS                            */
@@ -112,7 +113,7 @@ int8_t bhy_initialize_support(void)
 */
 void bhy_delay_msec(uint32_t msec)
 {
-    HAL_Delay(msec);
+	Delay_ms(msec);
 }
 /*!
  * @brief provides a print function to the bhy driver on DD2.0 platform

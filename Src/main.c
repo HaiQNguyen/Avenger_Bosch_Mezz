@@ -19,19 +19,23 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+
 #include "main.h"
 #include "openamp.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 #include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
-#include "fw.h"
 
 #include "bhy_support.h"
 #include "bhy_uc_driver.h"
+#include "fw.h"
+
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -41,14 +45,16 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+
 #define MAX_BUFFER_SIZE RPMSG_BUFFER_SIZE
 
 /* Command list */
 #define LED_ON			"LED ON"
 #define LED_OFF			"LED OFF"
+#define SENSOR_DATA		"read data"
 
-
-
+/* Macro for sensor */
 #define FIFO_SIZE                      300
 #define ROTATION_VECTOR_SAMPLE_RATE    100
 #define MAX_PACKET_LENGTH              18
@@ -68,15 +74,14 @@ IPCC_HandleTypeDef hipcc;
 SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
+
 VIRT_UART_HandleTypeDef huart0;
 
 __IO FlagStatus VirtUart0RxMsg = RESET;
 uint8_t VirtUart0ChannelBuffRx[MAX_BUFFER_SIZE];
 uint16_t VirtUart0ChannelRxSize = 0;
 
-
 char out_buffer[OUT_BUFFER_SIZE] = " W: 0.999  X: 0.999  Y: 0.999  Z: 0.999   \r";
-
 uint8_t fifo[FIFO_SIZE];
 
 /* USER CODE END PV */
@@ -96,6 +101,7 @@ static void sensors_callback_rotation_vector(bhy_data_generic_t * sensor_data, b
 
 int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
 int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
+void Delay_ms(uint32_t ms);
 
 /* USER CODE END PFP */
 
@@ -112,9 +118,6 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	//TODO Porting
-	int8_t ret;
-
 	/* BHY Variable*/
 	uint8_t                    *fifoptr           = NULL;
 	uint8_t                    bytes_left_in_fifo = 0;
@@ -123,15 +126,27 @@ int main(void)
 	bhy_data_generic_t         fifo_packet;
 	bhy_data_type_t            packet_type;
 	BHY_RETURN_FUNCTION_TYPE   result;
-	/* the remapping matrix for BHA or BHI here should be configured according to its placement on customer's PCB. */
-	/* for details, please check 'Application Notes Axes remapping of BHA250(B)/BHI160(B)' document. */
-	int8_t                     bhy_mapping_matrix_config[3*3] = {0,1,0,-1,0,0,0,0,1};
-	/* the remapping matrix for Magnetometer should be configured according to its placement on customer's PCB.  */
-	/* for details, please check 'Application Notes Axes remapping of BHA250(B)/BHI160(B)' document. */
-	int8_t                     mag_mapping_matrix_config[3*3] = {0,1,0,1,0,0,0,0,-1};
-	/* the sic matrix should be calculated for customer platform by logging uncalibrated magnetometer data. */
-	/* the sic matrix here is only an example array (identity matrix). Customer should generate their own matrix. */
-	/* This affects magnetometer fusion performance. */
+
+	/*
+	 * the remapping matrix for BHA or BHI here should be configured according to
+	 * its placement on customer's PCB. For details, please check
+	 * 'Application Notes Axes remapping of BHA250(B)/BHI160(B)' document.
+	 * */
+	int8_t bhy_mapping_matrix_config[3*3] = {0,1,0,-1,0,0,0,0,1};
+
+
+	/* the remapping matrix for Magnetometer should be configured according to
+	 * its placement on customer's PCB. For details, please check
+	 * 'Application Notes Axes remapping of BHA250(B)/BHI160(B)' document.
+	 * */
+	int8_t mag_mapping_matrix_config[3*3] = {0,1,0,1,0,0,0,0,-1};
+
+	/* the sic matrix should be calculated for customer platform
+	 * by logging uncalibrated magnetometer data. The sic matrix
+	 * here is only an example array (identity matrix). Customer
+	 * should generate their own matrix. This affects magnetometer
+	 * fusion performance.
+	 * */
 	float sic_array[9] = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
 
 
@@ -158,6 +173,7 @@ int main(void)
 
   /* IPCC initialisation */
    MX_IPCC_Init();
+
   /* OpenAmp initialisation ---------------------------------*/
   MX_OPENAMP_Init(RPMSG_REMOTE, NULL);
 
@@ -181,7 +197,7 @@ int main(void)
   HAL_GPIO_Init(LED_STATUS_GPIO_Port, &GPIO_InitStruct);
   PERIPH_UNLOCK(LED_STATUS_GPIO_Port);
 
-  /* Configure STATUS_LED Pin as output*/
+  /* Configure ERROR_LED Pin as output*/
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Pin = LED_ERROR_Pin;
@@ -189,7 +205,7 @@ int main(void)
   HAL_GPIO_Init(LED_ERROR_GPIO_Port, &GPIO_InitStruct);
   PERIPH_UNLOCK(LED_ERROR_GPIO_Port);
 
-  /* Configure STATUS_LED Pin as output*/
+  /* Configure TEST_LED Pin as output*/
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Pin = LED_TEST_Pin;
@@ -197,26 +213,14 @@ int main(void)
   HAL_GPIO_Init(LED_TEST_GPIO_Port, &GPIO_InitStruct);
   PERIPH_UNLOCK(LED_TEST_GPIO_Port);
 
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Pin = BMP388_CS_Pin;
-  PERIPH_LOCK(BMP388_CS_GPIO_Port);
-  HAL_GPIO_Init(BMP388_CS_GPIO_Port, &GPIO_InitStruct);
-  PERIPH_UNLOCK(BMP388_CS_GPIO_Port);
-
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Pin = BME680_CS_Pin;
-  PERIPH_LOCK(BME680_CS_GPIO_Port);
-  HAL_GPIO_Init(BME680_CS_GPIO_Port, &GPIO_InitStruct);
-  PERIPH_UNLOCK(BME680_CS_GPIO_Port);
-
+  /* Configure input pin for BHI160*/
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Pin = BHI160_IN_Pin;
   PERIPH_LOCK(BHI160_IN_GPIO_Port);
   HAL_GPIO_Init(BHI160_IN_GPIO_Port, &GPIO_InitStruct);
   PERIPH_UNLOCK(BHI160_IN_GPIO_Port);
+
   if (VIRT_UART_Init(&huart0) != VIRT_UART_OK)
   {
 	  Error_Handler();
@@ -227,63 +231,42 @@ int main(void)
 	  Error_Handler();
   }
 
-  //uint8_t I2C_TX[10] = {0};
-  //uint8_t I2C_RX[10] = {0};
-
-  //uint8_t SPI_TX[10] = {0};
-  //uint8_t SPI_RX[10] = {0};
-
-  HAL_GPIO_WritePin(BMP388_CS_GPIO_Port, BMP388_CS_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(BME680_CS_GPIO_Port, BME680_CS_Pin, GPIO_PIN_SET);
-
-
-
-
-  /*****************************************************/
-
-  ret = bhy_driver_init(&bhy_firmware_image);
-  if(bhy_driver_init(&bhy_firmware_image) )
-	{
-		//DirtyDebug("Error Driver Init \r\n");
-		//bmi_state = BMI160_ERROR;
+  /* Sensor Initialization ----------------------------------------------------------------------------------------*/
+  if(bhy_driver_init(&bhy_firmware_image))
+  {
 	  Error_Handler();
-	}
+  }
 
-	/* wait for the bhy trigger the interrupt pin go down and up again */
-	while (HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin));
+  /* wait for the bhy trigger the interrupt pin go down and up again */
+  while (HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin))
+  {
+  }
 
-	while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin));
+  while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin))
+  {
+  }
 
-	/* To get the customized version number in firmware, it is necessary to read Parameter Page 2, index 125 */
-	    /* to get this information. This feature is only supported for customized firmware. To get this customized */
-	    /* firmware, you need to contact your local FAE of Bosch Sensortec. */
-	    //bhy_read_parameter_page(BHY_PAGE_2, PAGE2_CUS_FIRMWARE_VERSION, (uint8_t*)&bhy_cus_version, sizeof(struct cus_version_t));
-	    //DEBUG("cus version base:%d major:%d minor:%d\n", bhy_cus_version.base, bhy_cus_version.major, bhy_cus_version.minor);
+  /*
+   * the remapping matrix for BHI and Magmetometer should be configured here
+   * to make sure rotation vector is calculated in a correct coordinates system.
+   * */
+  bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_config);
+  bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_MAG, mag_mapping_matrix_config);
+  bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_GYRO, bhy_mapping_matrix_config);
+  /* This sic matrix setting affects magnetometer fusion performance. */
+  bhy_set_sic_matrix(sic_array);
 
-	    /* the remapping matrix for BHI and Magmetometer should be configured here to make sure rotation vector is */
-	    /* calculated in a correct coordinates system. */
-	    bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_config);
-	    bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_MAG, mag_mapping_matrix_config);
-	    bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_GYRO, bhy_mapping_matrix_config);
-	    /* This sic matrix setting affects magnetometer fusion performance. */
-	    bhy_set_sic_matrix(sic_array);
+  /* install the callback function for parse fifo data */
+  if(bhy_install_sensor_callback(VS_TYPE_ROTATION_VECTOR, VS_WAKEUP, sensors_callback_rotation_vector))
+  {
+	Error_Handler();
+  }
 
-	    /* install the callback function for parse fifo data */
-	    if(bhy_install_sensor_callback(VS_TYPE_ROTATION_VECTOR, VS_WAKEUP, sensors_callback_rotation_vector))
-	    {
-	    	Error_Handler();
-	    }
-
-	/* install the callback function for parse fifo data */
-	if(bhy_enable_virtual_sensor(VS_TYPE_ROTATION_VECTOR, VS_WAKEUP, ROTATION_VECTOR_SAMPLE_RATE, 0, VS_FLUSH_NONE, 0, 0))
-	{
-		//DirtyDebug("Fail to install sensor callback\r\n");
-		//bmi_state = BMI160_ERROR;
-		Error_Handler();
-	}
-
-
-
+  /* install the callback function for parse fifo data */
+  if(bhy_enable_virtual_sensor(VS_TYPE_ROTATION_VECTOR, VS_WAKEUP, ROTATION_VECTOR_SAMPLE_RATE, 0, VS_FLUSH_NONE, 0, 0))
+  {
+	Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -295,6 +278,7 @@ int main(void)
 
 	if(VirtUart0RxMsg == SET)
 	{
+		/*if we receive correct command from core A7, send the sensor data*/
 		VirtUart0RxMsg = RESET;
 		HAL_Delay(200);
 		char msg_to_transmit[MAX_BUFFER_SIZE];
@@ -306,8 +290,7 @@ int main(void)
 		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
 	}
 
-
-#if 1
+	/*Reading FIFO of the sensor*/
 	while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin) && !bytes_remaining)
 	{
 	}
@@ -344,41 +327,6 @@ int main(void)
 			fifo[bytes_left_in_fifo++] = *(fifoptr++);
 		}
 	}
-	HAL_GPIO_TogglePin(LED_TEST_GPIO_Port, LED_TEST_Pin);
-#endif
-
-#if 0
-	SPI_TX[0] = 0x80;
-
-	HAL_GPIO_WritePin(BMP388_CS_GPIO_Port, BMP388_CS_Pin, GPIO_PIN_RESET);
-	HAL_Delay(10);
-	//HAL_SPI_TransmitReceive(&hspi2, SPI_TX, SPI_RX, 3, 0xFF);
-	HAL_SPI_Transmit(&hspi2, SPI_TX, 1, 0xFF);
-	while(HAL_SPI_GetState(&hspi2) == HAL_SPI_STATE_BUSY_TX);
-	HAL_SPI_Receive(&hspi2, SPI_RX, 2, 0xFF);
-	while(HAL_SPI_GetState(&hspi2) == HAL_SPI_STATE_BUSY_RX);
-	HAL_GPIO_WritePin(BMP388_CS_GPIO_Port, BMP388_CS_Pin, GPIO_PIN_SET);
-
-	memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-	sprintf(VirtUart0ChannelBuffRx, "SPI ID: 0x%x, 0x%x \r\n", SPI_RX[0], SPI_RX[1]);
-	VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
-
-
-	SPI_TX[0] = 0xD0;
-
-	HAL_GPIO_WritePin(BME680_CS_GPIO_Port, BME680_CS_Pin, GPIO_PIN_RESET);
-	HAL_Delay(10);
-	HAL_SPI_Transmit(&hspi2, SPI_TX, 1, 0xFF);
-	HAL_SPI_Receive(&hspi2, SPI_RX, 1, 0xFF);
-	HAL_GPIO_WritePin(BME680_CS_GPIO_Port, BME680_CS_Pin, GPIO_PIN_SET);
-
-	memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-	sprintf(VirtUart0ChannelBuffRx, "SPI ID: 0x%x \r\n", SPI_RX[0]);
-	VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
-
-	HAL_Delay(2000);
-#endif
-
 
     /* USER CODE END WHILE */
 
@@ -606,9 +554,6 @@ static void MX_GPIO_Init(void)
 void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
 {
 	HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
-    /* copy received msg in a variable to sent it back to master processor in main infinite loop*/
-    //VirtUart0ChannelRxSize = huart->RxXferSize < MAX_BUFFER_SIZE? huart->RxXferSize : MAX_BUFFER_SIZE-1;
-
 
     if( memcmp(huart->pRxBuffPtr, LED_ON, VirtUart0ChannelRxSize - 1) == 0)
     	HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
@@ -616,29 +561,24 @@ void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
     else if( memcmp(huart->pRxBuffPtr, LED_OFF, VirtUart0ChannelRxSize - 1) == 0)
 		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
 
-    else if(!strncmp((char *)huart->pRxBuffPtr, "bmi160 read", strlen("bmi160 read")))
-    //else if( memcmp(huart->pRxBuffPtr, "bmi160 read", VirtUart0ChannelRxSize - 1) == 0)
+    else if(!strncmp((char *)huart->pRxBuffPtr, SENSOR_DATA, strlen(SENSOR_DATA)))
     {
     	VirtUart0RxMsg = SET;
     }
-
-    //memcpy(VirtUart0ChannelBuffRx, huart->pRxBuffPtr, VirtUart0ChannelRxSize);
-    //VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
 }
 
 
-
-
-/********************************************************************************/
-
-/*                                 FUNCTIONS                                    */
-
-/********************************************************************************/
+/**
+  * @brief Call back function of the sensors
+  * @param tbd
+  * @retval tbd
+  */
 static void sensors_callback_rotation_vector(bhy_data_generic_t * sensor_data, bhy_virtual_sensor_t sensor_id)
 {
     float temp;
     uint8_t index;
 
+    /*processing the data*/
     temp = sensor_data->data_quaternion.w / 16384.0f; /* change the data unit by dividing 16384 */
     out_buffer[3] = temp < 0 ? '-' : ' ';
     temp = temp < 0 ? -temp : temp;
@@ -685,10 +625,20 @@ static void sensors_callback_rotation_vector(bhy_data_generic_t * sensor_data, b
 
 }
 
+/**
+  * @brief 	i2c write function
+  * 		this is the implementation of write function in the sensor library
+  * 		please see bhy_support.c
+  *
+  * @param 	addr		i2c address of the sensor
+  * @param 	reg			register being writen
+  * @param 	*p_buff		pointer to data
+  * @param 	szie		size of the data
+  * @retval BHY_SUCCES OR BHY_ERROR
+  */
 int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
 {
-	//TODO porting I2c code
-	uint8_t tx_buff[100];
+	uint8_t tx_buff[size + 1];
 	tx_buff[0] = reg;
 	memcpy(tx_buff + 1, p_buf, size * sizeof(uint8_t));
 	if(HAL_I2C_Master_Transmit(&hi2c2, addr << 1, tx_buff, size + 1, 0xFF) != HAL_OK)
@@ -697,15 +647,38 @@ int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size
 	return BHY_SUCCESS;
 }
 
+/**
+  * @brief 	i2c read function
+  * 		this is the implementation of read function in the sensor library
+  * 		please see bhy_support.c
+  *
+  * @param 	addr		i2c address of the sensor
+  * @param 	reg			register we want to read
+  * @param 	*p_buff		pointer to store data
+  * @param 	szie		size of the data
+  * @retval BHY_SUCCES OR BHY_ERROR
+  */
 int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
 {
-	//TODO porting I2C code
 	if(HAL_I2C_Master_Transmit(&hi2c2, addr << 1, &reg, 1, 0xFF) != HAL_OK)
 		return BHY_ERROR;
 
 	if(HAL_I2C_Master_Receive(&hi2c2, ((addr << 1) | 1), p_buf, size, 0xFF) != HAL_OK)
 		return BHY_ERROR;
+
 	return BHY_SUCCESS;
+}
+
+/**
+  * @brief 	Delay function, in milisecond
+  * 		This is the implementation of the delay function in the sensor library
+  *
+  * @param 	ms	 number of miliseconds
+  * @retval None
+  */
+void Delay_ms(uint32_t ms)
+{
+	HAL_Delay(ms);
 }
 /* USER CODE END 4 */
 
@@ -719,6 +692,7 @@ void Error_Handler(void)
   /* User can add his own implementation to report the HAL error return state */
 	while(1)
 	{
+		/*blocking the application and blink error LED*/
 		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
 		HAL_Delay(200);
 	}

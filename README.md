@@ -29,19 +29,33 @@ TBD
 * Connect the board to the PC with USB-to-Serial interface and start the terminal program
 #### Building the ethernet interface between the board and PC (execute only once)
 * **On the linux machine, type:**
+
 > sudo gedit /etc/network/interfaces 
+
 * Add the Ethernet interface:
+
 > allow-hotplug ens35u1
+>
 > iface ens35u1 inet static
+>
 > address 192.168.7.1
+>
 > netmask 255.255.255.0
+>
 > network 192.168.7.0
+>
 > gateway 192.168.7.1
+
 * Disable networkManager for all Ethernet-to-USB: 
+
 > sudo gedit /etc/NetworkManager/conf.d/stm32mp-otg-eth.conf 
+
 * Add those lines below:
+
 > [keyfile]
+>
 > unmanaged-devices=interface-name:ens35*;interface-name:usb*
+
 * Reboot linux machine
 * After rebooting, on the linux machine we can verify the connetion by:
 > ping 192.169.0.2
@@ -52,11 +66,14 @@ TBD
 * Import the project into system workbench and rebuld it. There should be no error and some minor warnings
 * Flash the application into the Avenger96
 * If the application have not started yet, please go to: 
+
 >cd /usr/local/projects/Avenger_Bosch_Mezz/
+>
 > ./fw_cortex_m4.sh start
 
 * Activate the co-proc messaging:
 > stty -onlcr -echo -F /dev/ttyRPMSG0
+>
 > cat /dev/ttyRPMSG0 &
 
 * The sensor data can be read by using this command: 

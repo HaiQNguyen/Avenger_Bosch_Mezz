@@ -39,5 +39,7 @@
 		<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature>
 		<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature>
 		<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature>
+		<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature>
+		<nature>com.st.stm32ide.mpu.ide.core.MPUEmbeddedMCUProjectNature</nature>
 	</natures>
 </projectDescription>

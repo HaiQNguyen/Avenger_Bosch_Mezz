@@ -58,8 +58,6 @@ void PendSV_Handler(void);
 void SysTick_Handler(void);
 void IPCC_RX1_IRQHandler(void);
 void IPCC_TX1_IRQHandler(void);
-void EXTI14_IRQHandler(void);
-void EXTI15_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */

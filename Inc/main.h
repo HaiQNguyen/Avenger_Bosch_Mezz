@@ -58,16 +58,12 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BMP388_CS_Pin GPIO_PIN_0
-#define BMP388_CS_GPIO_Port GPIOI
 #define LED_STATUS_Pin GPIO_PIN_7
 #define LED_STATUS_GPIO_Port GPIOZ
-#define BMA456_CS_Pin GPIO_PIN_8
-#define BMA456_CS_GPIO_Port GPIOD
+#define BHI160_IN_Pin GPIO_PIN_14
+#define BHI160_IN_GPIO_Port GPIOA
 #define LED_TEST_Pin GPIO_PIN_1
 #define LED_TEST_GPIO_Port GPIOG
-#define BME680_CS_Pin GPIO_PIN_3
-#define BME680_CS_GPIO_Port GPIOC
 #define LED_ERROR_Pin GPIO_PIN_0
 #define LED_ERROR_GPIO_Port GPIOG
 /* USER CODE BEGIN Private defines */

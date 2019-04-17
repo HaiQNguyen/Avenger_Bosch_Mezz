@@ -24,10 +24,14 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdint.h>
+#include <string.h>
+#include <stdarg.h>
+#include <math.h>
+#include "fw.h"
+
 #include "bhy_support.h"
 #include "bhy_uc_driver.h"
-#include "Bosch_PCB_7183_di01_BMI160-7183_di01.2.1.10836_170103.h"
-#include "bmm150.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,9 +49,10 @@
 
 
 
-#define FIFO_SIZE                      300 //TODO Porting
-#define MAX_PACKET_LENGTH              18 //TODO Porting
-#define TICKS_IN_ONE_SECOND            32000.0F //TODO Porting
+#define FIFO_SIZE                      300
+#define ROTATION_VECTOR_SAMPLE_RATE    100
+#define MAX_PACKET_LENGTH              18
+#define OUT_BUFFER_SIZE                60
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -70,29 +75,9 @@ uint8_t VirtUart0ChannelBuffRx[MAX_BUFFER_SIZE];
 uint16_t VirtUart0ChannelRxSize = 0;
 
 
-/* system timestamp */
-uint32_t bhy_timestamp = 0; //TODO Porting
-uint8_t fifo[FIFO_SIZE]; //TODO Porting
+char out_buffer[OUT_BUFFER_SIZE] = " W: 0.999  X: 0.999  Y: 0.999  Z: 0.999   \r";
 
-
-typedef enum BMI160_STATE
-{
-	BMI160_IDLE,
-	BMI160_INIT,
-	BMI160_READ,
-	BMI160_ERROR
-}BMI160_State;
-
-volatile BMI160_State bmi_state = BMI160_IDLE;
-
-float   time_stamp    = 0;
-uint8_t sensor_type   = 0;
-int16_t x_raw         = 0;
-int16_t y_raw         = 0;
-int16_t z_raw         = 0;
-float   x_data        = 0;
-float   y_data        = 0;
-float   z_data        = 0;
+uint8_t fifo[FIFO_SIZE];
 
 /* USER CODE END PV */
 
@@ -106,15 +91,8 @@ int MX_OPENAMP_Init(int RPMsgRole, rpmsg_ns_bind_cb ns_bind_cb);
 /* USER CODE BEGIN PFP */
 void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart);
 
-void DirtyDebug(char *msg)
-{
-	memset(VirtUart0ChannelBuffRx, 0, VirtUart0ChannelRxSize);
-	sprintf(VirtUart0ChannelBuffRx, msg);
-	VIRT_UART_Transmit(&huart0, VirtUart0ChannelBuffRx, VirtUart0ChannelRxSize);
-}
 
-static void timestamp_callback(bhy_data_scalar_u16_t *new_timestamp); //TODO Porting
-static void sensors_callback_acc(bhy_data_generic_t * sensor_data, bhy_virtual_sensor_t sensor_id); //TODO Porting
+static void sensors_callback_rotation_vector(bhy_data_generic_t * sensor_data, bhy_virtual_sensor_t sensor_id);
 
 int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
 int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
@@ -136,6 +114,7 @@ int main(void)
 
 	//TODO Porting
 	int8_t ret;
+
 	/* BHY Variable*/
 	uint8_t                    *fifoptr           = NULL;
 	uint8_t                    bytes_left_in_fifo = 0;
@@ -144,12 +123,16 @@ int main(void)
 	bhy_data_generic_t         fifo_packet;
 	bhy_data_type_t            packet_type;
 	BHY_RETURN_FUNCTION_TYPE   result;
-	int8_t                    bhy_mapping_matrix_init[3*3]   = {0};
-	int8_t                    bhy_mapping_matrix_config[3*3] = {0,1,0,-1,0,0,0,0,1};
-
-
-	struct bmm150_dev dev;
-	int8_t rslt = BMM150_OK;
+	/* the remapping matrix for BHA or BHI here should be configured according to its placement on customer's PCB. */
+	/* for details, please check 'Application Notes Axes remapping of BHA250(B)/BHI160(B)' document. */
+	int8_t                     bhy_mapping_matrix_config[3*3] = {0,1,0,-1,0,0,0,0,1};
+	/* the remapping matrix for Magnetometer should be configured according to its placement on customer's PCB.  */
+	/* for details, please check 'Application Notes Axes remapping of BHA250(B)/BHI160(B)' document. */
+	int8_t                     mag_mapping_matrix_config[3*3] = {0,1,0,1,0,0,0,0,-1};
+	/* the sic matrix should be calculated for customer platform by logging uncalibrated magnetometer data. */
+	/* the sic matrix here is only an example array (identity matrix). Customer should generate their own matrix. */
+	/* This affects magnetometer fusion performance. */
+	float sic_array[9] = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
 
 
   /* USER CODE END 1 */
@@ -254,27 +237,12 @@ int main(void)
   HAL_GPIO_WritePin(BME680_CS_GPIO_Port, BME680_CS_Pin, GPIO_PIN_SET);
 
 
-  /* Sensor interface over I2C */
-  	dev.dev_id = BMM150_DEFAULT_I2C_ADDRESS;
-  	dev.intf = BMM150_I2C_INTF;
-  	dev.read = sensor_i2c_read;
-  	dev.write = sensor_i2c_write;
-  	dev.delay_ms = HAL_Delay;
 
-  	rslt = bmm150_init(&dev);
-
-
-  	/* Setting the power mode as normal */
-	dev.settings.pwr_mode = BMM150_NORMAL_MODE;
-	rslt = bmm150_set_op_mode(&dev);
-
-	/* Setting the preset mode as Low power mode
-	i.e. data rate = 10Hz XY-rep = 1 Z-rep = 2*/
-	dev.settings.preset_mode = BMM150_PRESETMODE_LOWPOWER;
-	rslt = bmm150_set_presetmode(&dev);
 
   /*****************************************************/
-  if(bhy_driver_init(&bhy1_fw))
+
+  ret = bhy_driver_init(&bhy_firmware_image);
+  if(bhy_driver_init(&bhy_firmware_image) )
 	{
 		//DirtyDebug("Error Driver Init \r\n");
 		//bmi_state = BMI160_ERROR;
@@ -287,37 +255,34 @@ int main(void)
 	while (!HAL_GPIO_ReadPin(BHI160_IN_GPIO_Port, BHI160_IN_Pin));
 
 	/* To get the customized version number in firmware, it is necessary to read Parameter Page 2, index 125 */
-	/* to get this information. This feature is only supported for customized firmware. To get this customized */
-	/* firmware, you need to contact your local FAE of Bosch Sensortec. */
-	//bhy_read_parameter_page(BHY_PAGE_2, PAGE2_CUS_FIRMWARE_VERSION, (uint8_t*)&bhy_cus_version, sizeof(struct cus_version_t));
-	//DEBUG("cus version base:%d major:%d minor:%d\n", bhy_cus_version.base, bhy_cus_version.major, bhy_cus_version.minor);
+	    /* to get this information. This feature is only supported for customized firmware. To get this customized */
+	    /* firmware, you need to contact your local FAE of Bosch Sensortec. */
+	    //bhy_read_parameter_page(BHY_PAGE_2, PAGE2_CUS_FIRMWARE_VERSION, (uint8_t*)&bhy_cus_version, sizeof(struct cus_version_t));
+	    //DEBUG("cus version base:%d major:%d minor:%d\n", bhy_cus_version.base, bhy_cus_version.major, bhy_cus_version.minor);
 
-	/* config mapping matrix, for customer platform, this remapping matrix need to be changed */
-	/* according to 'Application Note Axes remapping of BHA250(B) /BHI160(B)' document.       */
-	bhy_mapping_matrix_get(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_init);
-	bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_config);
-	bhy_mapping_matrix_get(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_init);
+	    /* the remapping matrix for BHI and Magmetometer should be configured here to make sure rotation vector is */
+	    /* calculated in a correct coordinates system. */
+	    bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_ACC, bhy_mapping_matrix_config);
+	    bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_MAG, mag_mapping_matrix_config);
+	    bhy_mapping_matrix_set(PHYSICAL_SENSOR_INDEX_GYRO, bhy_mapping_matrix_config);
+	    /* This sic matrix setting affects magnetometer fusion performance. */
+	    bhy_set_sic_matrix(sic_array);
 
-	/* install time stamp callback */
-	bhy_install_timestamp_callback(VS_WAKEUP, timestamp_callback);
-	bhy_install_timestamp_callback(VS_NON_WAKEUP, timestamp_callback);
-
+	    /* install the callback function for parse fifo data */
+	    if(bhy_install_sensor_callback(VS_TYPE_ROTATION_VECTOR, VS_WAKEUP, sensors_callback_rotation_vector))
+	    {
+	    	Error_Handler();
+	    }
 
 	/* install the callback function for parse fifo data */
-	if(bhy_install_sensor_callback(VS_TYPE_ACCELEROMETER, VS_WAKEUP, sensors_callback_acc))
+	if(bhy_enable_virtual_sensor(VS_TYPE_ROTATION_VECTOR, VS_WAKEUP, ROTATION_VECTOR_SAMPLE_RATE, 0, VS_FLUSH_NONE, 0, 0))
 	{
 		//DirtyDebug("Fail to install sensor callback\r\n");
 		//bmi_state = BMI160_ERROR;
 		Error_Handler();
 	}
 
-	/* enables the virtual sensor */
-	if(bhy_enable_virtual_sensor(VS_TYPE_ACCELEROMETER, VS_WAKEUP, 10, 0, VS_FLUSH_NONE, 0, 0))
-	{
-		//DirtyDebug("Fail to enable sensor\r\n");
-		//bmi_state = BMI160_ERROR;
-		Error_Handler();
-	}
+
 
   /* USER CODE END 2 */
 
@@ -325,9 +290,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  rslt = bmm150_read_mag_data(&dev);
-
-	  	/* Print the Mag data */
 
 	OPENAMP_check_for_message();
 
@@ -338,8 +300,7 @@ int main(void)
 		char msg_to_transmit[MAX_BUFFER_SIZE];
 		uint16_t msg_size = 0;
 
-		msg_size = snprintf(msg_to_transmit, MAX_BUFFER_SIZE, "acc %.2f %.2f %.2f ", x_data, y_data, z_data);
-		msg_size += snprintf(msg_to_transmit + msg_size, MAX_BUFFER_SIZE, "MAG X : %0.2f \t MAG Y : %0.2f \t MAG Z : %0.2f \n" ,dev.data.x, dev.data.y, dev.data.z);
+		msg_size = snprintf(msg_to_transmit, MAX_BUFFER_SIZE, out_buffer);
 		msg_size += snprintf(msg_to_transmit + msg_size, MAX_BUFFER_SIZE, "%s\n", VirtUart0ChannelBuffRx);
 		VIRT_UART_Transmit(&huart0, (uint8_t*)msg_to_transmit, msg_size);
 		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
@@ -673,43 +634,55 @@ void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
 /*                                 FUNCTIONS                                    */
 
 /********************************************************************************/
-static void timestamp_callback(bhy_data_scalar_u16_t *new_timestamp)
+static void sensors_callback_rotation_vector(bhy_data_generic_t * sensor_data, bhy_virtual_sensor_t sensor_id)
 {
-    /* updates the system timestamp */
-    bhy_update_system_timestamp(new_timestamp, &bhy_timestamp);
-}
+    float temp;
+    uint8_t index;
 
+    temp = sensor_data->data_quaternion.w / 16384.0f; /* change the data unit by dividing 16384 */
+    out_buffer[3] = temp < 0 ? '-' : ' ';
+    temp = temp < 0 ? -temp : temp;
+    out_buffer[4] = floor(temp) + '0';
 
-static void sensors_callback_acc(bhy_data_generic_t * sensor_data, bhy_virtual_sensor_t sensor_id)
-{
-	HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
-    /* Since a timestamp is always sent before every new data, and that the callbacks   */
-    /* are called while the parsing is done, then the system timestamp is always equal  */
-    /* to the sample timestamp. (in callback mode only)                                 */
-    time_stamp = (float)(bhy_timestamp) / TICKS_IN_ONE_SECOND;
-    //DEBUG("sensor_id = %d\n", sensor_id);
-    //TODO replace
-    switch(sensor_id)
+    for (index = 6; index <= 8; index++)
     {
-        case VS_ID_ACCELEROMETER:
-
-        case VS_ID_ACCELEROMETER_WAKEUP:
-            x_raw  = sensor_data->data_vector.x;
-            y_raw  = sensor_data->data_vector.y;
-            z_raw  = sensor_data->data_vector.z;
-            /* The resolution is  15bit ,the default range is 4g, actual acceleration equals: raw_data/(exp(2,15) == 32768) */
-            x_data = (float)x_raw / 32768.0f * 4.0f;
-            y_data = (float)y_raw / 32768.0f * 4.0f;
-            z_data = (float)z_raw / 32768.0f * 4.0f;
-            //DEBUG("Time:%6.3fs acc %f %f %f\n", time_stamp, x_data, y_data, z_data);
-            //TODO replace
-            break;
-
-        default:
-            //DEBUG("unknown id = %d\n", sensor_id);
-            //TODO replace
-        	break;
+        temp = (temp - floor(temp)) * 10;
+        out_buffer[index] = floor(temp) + '0';
     }
+
+    temp = sensor_data->data_quaternion.x / 16384.0f;
+    out_buffer[13] = temp < 0 ? '-' : ' ';
+    temp = temp < 0 ? -temp : temp;
+    out_buffer[14] = floor(temp) + '0';
+
+    for (index = 16; index <= 18; index++)
+    {
+        temp = (temp - floor(temp)) * 10;
+        out_buffer[index] = floor(temp) + '0';
+    }
+
+    temp = sensor_data->data_quaternion.y / 16384.0f;
+    out_buffer[23] = temp < 0 ? '-' : ' ';
+    temp = temp < 0 ? -temp : temp;
+    out_buffer[24] = floor(temp) + '0';
+
+    for (index = 26; index <= 28; index++)
+    {
+        temp = (temp - floor(temp)) * 10;
+        out_buffer[index] = floor(temp) + '0';
+    }
+
+    temp = sensor_data->data_quaternion.z / 16384.0f;
+    out_buffer[33] = temp < 0 ? '-' : ' ';
+    temp = temp < 0 ? -temp : temp;
+    out_buffer[34] = floor(temp) + '0';
+
+    for (index = 36; index <= 38; index++)
+    {
+        temp = (temp - floor(temp)) * 10;
+        out_buffer[index] = floor(temp) + '0';
+    }
+
 }
 
 int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
@@ -718,15 +691,20 @@ int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size
 	uint8_t tx_buff[100];
 	tx_buff[0] = reg;
 	memcpy(tx_buff + 1, p_buf, size * sizeof(uint8_t));
-	HAL_I2C_Master_Transmit(&hi2c2, addr << 1, tx_buff, size + 1, 0xFF);
+	if(HAL_I2C_Master_Transmit(&hi2c2, addr << 1, tx_buff, size + 1, 0xFF) != HAL_OK)
+		return BHY_ERROR;
+
 	return BHY_SUCCESS;
 }
 
 int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size)
 {
 	//TODO porting I2C code
-	HAL_I2C_Master_Transmit(&hi2c2, addr << 1, &reg, 1, 0xFF);
-	HAL_I2C_Master_Receive(&hi2c2, ((addr << 1) | 1), p_buf, size, 0xFF);
+	if(HAL_I2C_Master_Transmit(&hi2c2, addr << 1, &reg, 1, 0xFF) != HAL_OK)
+		return BHY_ERROR;
+
+	if(HAL_I2C_Master_Receive(&hi2c2, ((addr << 1) | 1), p_buf, size, 0xFF) != HAL_OK)
+		return BHY_ERROR;
 	return BHY_SUCCESS;
 }
 /* USER CODE END 4 */

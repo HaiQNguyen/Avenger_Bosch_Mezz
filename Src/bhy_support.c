@@ -69,7 +69,7 @@ static uint8_t *version = BHY_MCU_REFERENCE_VERSION;
 extern int8_t sensor_i2c_write(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
 extern int8_t sensor_i2c_read(uint8_t addr, uint8_t reg, uint8_t *p_buf, uint16_t size);
 extern void trace_log(const char *fmt, ...);
-extern I2C_HandleTypeDef hi2c2;//TODO init I2C handler
+
 /********************************************************************************/
 /*                             FUNCTION DECLARATIONS                            */
 /********************************************************************************/

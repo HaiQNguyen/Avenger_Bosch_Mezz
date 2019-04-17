@@ -150,7 +150,7 @@ extern void trace_log(const char *fmt, ...);
 BHY_RETURN_FUNCTION_TYPE bhy_driver_init(const uint8_t *bhy_fw_data)
 {
     uint32_t tmp_fw_len               = 0;
-    int8_t   init_retry_count         = BHY_INIT_RETRY_COUNT;
+    int8_t   init_retry_count         = 1;
     BHY_RETURN_FUNCTION_TYPE result   = BHY_SUCCESS;
 
     /* get fw lenght */

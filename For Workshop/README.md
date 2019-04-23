@@ -68,7 +68,7 @@
  
  * Open main.c file
  
- * Insert the snippet between
+ * Insert the snippet between `/* USER CODE BEGIN Includes */` and `/* USER CODE END Includes */`
  
  ```c
     
@@ -83,10 +83,23 @@
  
  ```  
  
- * ewqe
+ * Insert the snippet between `/* USER CODE BEGIN PD */` and `/* USER CODE END PD */`
  
- ```sh
- sudo 
+ ```c
+ 
+#define MAX_BUFFER_SIZE RPMSG_BUFFER_SIZE
+
+/* Command list */
+#define LED_ON			"LED ON"
+#define LED_OFF			"LED OFF"
+#define SENSOR_DATA		"read data"
+
+/* Macro for sensor */
+#define FIFO_SIZE                      300
+#define ROTATION_VECTOR_SAMPLE_RATE    100
+#define MAX_PACKET_LENGTH              18
+#define OUT_BUFFER_SIZE                60
+ 
  ```
  
  

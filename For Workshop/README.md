@@ -8,7 +8,7 @@
 
 * Start a new project and choose the part number: 
 
-![Choosing the controller](Document/pictures/choosing the controller.png  "Choosing the controller")
+![Choosing the controller](https://github.com/HaiQNguyen/Avenger_Bosch_Mezz/blob/feature/README/Document/pictures/choosing%20the%20controller.png   "Choosing the controller")
 
 * Go to System Core --> HSEM --> Activated. This will activate the HArdware semaphore. 
 

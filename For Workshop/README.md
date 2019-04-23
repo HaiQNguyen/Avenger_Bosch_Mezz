@@ -2,6 +2,15 @@
 
 ## Overview
 
+This user guide will show you a step-by-step to create an application on the Cortex-M side with STM32CubeMX. The application includes the Cortex-M reading the data from sensor thru I2C bus and send the data to the Cortex-A7 thru Inter-Processor communication controller. 
+
+**Toolchains for this guide:**
+
+* STM32CubeMX version 5.1.0
+* STM32 Cube MCU package for STM32mp1 series version 1.0.0
+* STM32 System Workbench version x.x.x
+
+
 ## Step by Step guide 
 
 ### In CubeMX 
@@ -259,7 +268,6 @@ if(VirtUart0RxMsg == SET)
 	msg_size = snprintf(msg_to_transmit, MAX_BUFFER_SIZE, out_buffer);
 	msg_size += snprintf(msg_to_transmit + msg_size, MAX_BUFFER_SIZE, "%s\n", VirtUart0ChannelBuffRx);
 	VIRT_UART_Transmit(&huart0, (uint8_t*)msg_to_transmit, msg_size);
-	HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
 }
 
 /*Reading FIFO of the sensor*/
@@ -305,14 +313,12 @@ if (bytes_remaining)
  
 ```c
 
- void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
+void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
 {
-	HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
-
-    if( memcmp(huart->pRxBuffPtr, LED_ON, VirtUart0ChannelRxSize - 1) == 0)
+    if( !strncmp((char *)huart->pRxBuffPtr, LED_ON, strlen(LED_ON)))
     	HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
 
-    else if( memcmp(huart->pRxBuffPtr, LED_OFF, VirtUart0ChannelRxSize - 1) == 0)
+    else if(!strncmp((char *)huart->pRxBuffPtr, LED_OFF, strlen(LED_OFF)))
 		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
 
     else if(!strncmp((char *)huart->pRxBuffPtr, SENSOR_DATA, strlen(SENSOR_DATA)))
@@ -320,7 +326,6 @@ if (bytes_remaining)
     	VirtUart0RxMsg = SET;
     }
 }
-
 
 /**
   * @brief Call back function of the sensors
@@ -440,4 +445,21 @@ void Delay_ms(uint32_t ms)
 
 * Build the application to check for errors
 
-* 
+* If you did not setup the ethernet communication between the target and host, please refer [here](https://github.com/HaiQNguyen/Avenger_Bosch_Mezz#building-the-ethernet-interface-between-the-board-and-pc-execute-only-once)
+
+* Go to Run --> Debug Configurations --> Double click on ST's STM32 MPU Debugging
+
+![Debug configuration](https://github.com/HaiQNguyen/Avenger_Bosch_Mezz/blob/feature/README/Document/pictures/debug_conf.png  "Debug configuration")
+
+ * In the Debug Configurations, in Startup tab, choose thru Linux core (Production mode) and enter this address 192.168.7.2 into Inet address field.
+ 
+ ![Setup debug interface](https://github.com/HaiQNguyen/Avenger_Bosch_Mezz/blob/feature/README/Document/pictures/setup_debug_inf.png  "Setup debug interface")
+ 
+ * Click debug to start debugging the code. 
+ 
+ * If you face the error as below, click OK and skip it because we have no ST Link debugger on board so there is no possibiliy to debug the code. 
+ 
+ ![Error Message](https://github.com/HaiQNguyen/Avenger_Bosch_Mezz/blob/feature/README/Document/pictures/error.png  "Error Message")
+ 
+  * To start running the application, please refer [here](https://github.com/HaiQNguyen/Avenger_Bosch_Mezz#flashing-the-application)
+

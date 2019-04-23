@@ -482,12 +482,10 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void VIRT_UART0_RxCpltCallback(VIRT_UART_HandleTypeDef *huart)
 {
-	HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
-
-    if( memcmp(huart->pRxBuffPtr, LED_ON, VirtUart0ChannelRxSize - 1) == 0)
+    if( !strncmp((char *)huart->pRxBuffPtr, LED_ON, strlen(LED_ON)))
     	HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
 
-    else if( memcmp(huart->pRxBuffPtr, LED_OFF, VirtUart0ChannelRxSize - 1) == 0)
+    else if(!strncmp((char *)huart->pRxBuffPtr, LED_OFF, strlen(LED_OFF)))
 		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
 
     else if(!strncmp((char *)huart->pRxBuffPtr, SENSOR_DATA, strlen(SENSOR_DATA)))

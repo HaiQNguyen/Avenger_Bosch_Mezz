@@ -29,7 +29,7 @@ TBD
 * **On the linux machine, type:**
 
 ```sh
-sudo gedit /etc/network/interfaces 
+> sudo gedit /etc/network/interfaces 
 ```
 
 * Add the Ethernet interface:
@@ -46,27 +46,28 @@ gateway 192.168.7.1
 * Disable networkManager for all Ethernet-to-USB: 
 
 ```sh
-sudo gedit /etc/NetworkManager/conf.d/stm32mp-otg-eth.conf 
+> sudo gedit /etc/NetworkManager/conf.d/stm32mp-otg-eth.conf 
 ```
 
 * Add those lines below:
 
 ```sh
 [keyfile]
-unmanaged-devices=interface-name:ens35*;interface-name:usb*
+unmanaged-devices=interface-name:ens35*;
+interface-name:usb*
 ```
 
 * Reboot linux machine
 * After rebooting, on the linux machine we can verify the connetion by:
 
 ```sh
-ping 192.169.0.2
+> ping 192.169.0.2
 ```
 
 * **On the Avenger board, we can also verify the connection by:**
 
 ```sh
-ping 192.168.0.1
+> ping 192.168.0.1
 ```
 
 #### Flashing the application
@@ -76,38 +77,45 @@ ping 192.168.0.1
 * If the application have not started yet, please go to: 
 
 ```sh
-cd /usr/local/projects/Avenger_Bosch_Mezz/
-./fw_cortex_m4.sh start
+> cd /usr/local/projects/Avenger_Bosch_Mezz/
+> ./fw_cortex_m4.sh start
 ```
 
 * Activate the co-proc messaging:
 
 ```sh
-stty -onlcr -echo -F /dev/ttyRPMSG0
-cat /dev/ttyRPMSG0 &
+> stty -onlcr -echo -F /dev/ttyRPMSG0
+> cat /dev/ttyRPMSG0 &
 ```
 
 * The sensor data can be read by using this command: 
 
 ```sh
-echo "read data" > /dev/ttyRPMSG0
+> echo "read data" > /dev/ttyRPMSG0
 ```
 
 * The response message follows:
 
 ```sh
-W: 0.999  X:-0.025  Y:-0.027  Z: 0.021
+> W: 0.999  X:-0.025  Y:-0.027  Z: 0.021
 ```
+
+* You can also test the LED by issueing the command:
+
+```sh
+> echo "LED ON" > /dev/ttyRPMSG0
+> echo "LED OFF" > /dev/ttyRPMSG0
+``` 
 
 * Application can be stopped by:
 
 ```sh
-./fw_cortex_m4.sh stop
+> ./fw_cortex_m4.sh stop
 ```
 
 ## Starting from scratch
 
-TBD
+Please refer [here](https://github.com/HaiQNguyen/Avenger_Bosch_Mezz/tree/master/For%20Workshop) to create the application from scratch 
 
 ## Change Log
 
@@ -117,9 +125,10 @@ Integrating BHI160 and BMM150, running Vector Rotation example
 Issue with SPI
 
 ##References
-ST Wiki: [wiki](https://wiki.st.com/stm32mpu/wiki/Main_Page)
-DH Wiki: [wiki](https://wiki.dh-electronics.com/index.php/Avenger96)
-Shiratech homepage: [page](http://www.shiratech-solutions.com/products/bosch-sensor/)
+
+* ST Wiki: [wiki](https://wiki.st.com/stm32mpu/wiki/Main_Page)
+* DH Wiki: [wiki](https://wiki.dh-electronics.com/index.php/Avenger96)
+* Shiratech homepage: [page](http://www.shiratech-solutions.com/products/bosch-sensor/)
 
 ##Contact
 Quang Hai Nguyen 

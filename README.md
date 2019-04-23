@@ -124,12 +124,12 @@ I2C bus can be initialize from CubeMX
 Integrating BHI160 and BMM150, running Vector Rotation example
 Issue with SPI
 
-##References
+## References
 
 * ST Wiki: [wiki](https://wiki.st.com/stm32mpu/wiki/Main_Page)
 * DH Wiki: [wiki](https://wiki.dh-electronics.com/index.php/Avenger96)
 * Shiratech homepage: [page](http://www.shiratech-solutions.com/products/bosch-sensor/)
 
-##Contact
+## Contact
 Quang Hai Nguyen 
 email: qnguyen@arroweurope.com

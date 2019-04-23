@@ -70,16 +70,16 @@
  
  * Insert the snippet between
  
- ``` c
+ ```c
     
-`#`include `<stdin.h>`  
-`#`include `<string.h>`
-`#`include `<stdarg.h>`
-`#`include `<math.h>`
+#include <stdin.h>  
+#include <string.h>
+#include <stdarg.h>
+#include <math.h>
 
-`#`include "bhy_support.h"
-`#`include "bhy_uc_driver.h"
-`#`include "fw.h"
+#include "bhy_support.h"
+#include "bhy_uc_driver.h"
+#include "fw.h"
  
  ```  
  
